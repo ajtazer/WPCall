@@ -3,7 +3,7 @@
   'use strict';
 
   // Configuration
-  const CALL_PAGE_URL = 'https://ajtazer.github.io/WPCall/call';
+  const CALL_PAGE_URL = 'https://ajtazer.github.io/WPCall';
   const SIGNALING_URL = 'https://wpcall-signaling.ajcoolx619.workers.dev';
 
   // State
