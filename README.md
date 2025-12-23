@@ -1,4 +1,77 @@
-# Call for WhatsApp Web
+# 📹 Call for WhatsApp Web  
+### Video calls for WhatsApp Web.
+
+WhatsApp Web is fast.  
+WhatsApp Desktop is heavy.
+
+This lets you **make calls without leaving WhatsApp Web**.
+
+---
+
+## 💡 What it fixes
+
+WhatsApp Web has no call button.  
+This adds one.
+
+A 📹 icon appears directly inside the active chat on **:contentReference[oaicite:0]{index=0}**.
+
+Click it → share link → instant call.
+
+---
+
+## ⚡ How it works
+
+- Detects the currently open chat
+- Injects a native-looking call button
+- Generates a secure, one-time call link
+- Peer-to-peer video/audio (WebRTC)
+- No servers touching your media
+
+No app switching.  
+No desktop client.  
+No friction.
+
+---
+
+## 🧪 How to use
+
+1. Open https://web.whatsapp.com/
+2. Open any chat
+3. Click the 📹 icon
+4. Send the generated link
+5. Start talking
+
+That’s it.
+
+---
+
+## 🔐 Privacy (by design)
+
+- Peer-to-peer encrypted calls
+- No message reading
+- No contacts stored
+- No tracking
+- No accounts
+
+If WhatsApp Web disappears, this should too.
+
+---
+
+## 🧠 Why it exists
+
+If you prefer WhatsApp Web over Desktop,  
+this **completes it**.
+
+---
+
+## ⚠️ Disclaimer
+
+Unofficial third-party extension.  
+Not affiliated with WhatsApp or Meta.
+
+
+
+<!-- # Call for WhatsApp Web
 
 > Video calls for WhatsApp Web.
 
@@ -88,4 +161,4 @@ Click the extension icon to access settings:
 
 ## License
 
-MIT
+MIT -->
