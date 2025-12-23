@@ -1,0 +1,89 @@
+/* WPCall - Injected styles for WhatsApp Web */
+
+/* Video call button - matches WhatsApp's icon buttons */
+.wpcall-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: var(--icon-lighter, #8696a0);
+  margin: 0 2px;
+}
+
+.wpcall-btn:hover {
+  background-color: var(--background-default-hover, rgba(134, 150, 160, 0.15));
+}
+
+.wpcall-btn:active {
+  background-color: var(--background-default-active, rgba(134, 150, 160, 0.25));
+}
+
+.wpcall-btn:focus {
+  outline: none;
+}
+
+.wpcall-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--focus-ring, #00a884);
+}
+
+.wpcall-btn svg {
+  display: block;
+}
+
+/* Right-side empty screen indicator */
+.wpcall-empty-indicator {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--secondary-lighter, #8696a0);
+  background-color: var(--background-default-hover, rgba(134, 150, 160, 0.1));
+  border-radius: 20px;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Toast notification - WhatsApp native style */
+.wpcall-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background-color: var(--background-default-hover, #3b4a54);
+  color: var(--primary-strong, #e9edef);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.wpcall-toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Dark mode support - inherits from WhatsApp's CSS variables */
+@media (prefers-color-scheme: dark) {
+  .wpcall-btn {
+    color: var(--icon-lighter, #aebac1);
+  }
+
+  .wpcall-toast {
+    background-color: var(--background-default-hover, #3b4a54);
+    color: var(--primary-strong, #e9edef);
+  }
+}

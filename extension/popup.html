@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=320">
+  <title>Call for WhatsApp Web</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <h1>Call for WhatsApp Web</h1>
+      <p class="tagline">Video calls for WhatsApp Web</p>
+    </header>
+
+    <main class="settings-list">
+      <div class="setting-group">
+        <h2>Call Behavior</h2>
+        
+        <label class="setting-item">
+          <span class="setting-info">
+            <span class="setting-label">Auto-copy message</span>
+            <span class="setting-description">Copy call message to clipboard automatically</span>
+          </span>
+          <input type="checkbox" id="autoCopy" checked>
+          <span class="toggle"></span>
+        </label>
+
+        <label class="setting-item">
+          <span class="setting-info">
+            <span class="setting-label">Auto-send message</span>
+            <span class="setting-description">Automatically send the call message</span>
+          </span>
+          <input type="checkbox" id="autoSend">
+          <span class="toggle"></span>
+        </label>
+      </div>
+
+      <div class="setting-group">
+        <h2>Call Options</h2>
+        
+        <label class="setting-item">
+          <span class="setting-info">
+            <span class="setting-label">Audio-only calls</span>
+            <span class="setting-description">Start calls with video disabled</span>
+          </span>
+          <input type="checkbox" id="audioOnly">
+          <span class="toggle"></span>
+        </label>
+
+        <label class="setting-item">
+          <span class="setting-info">
+            <span class="setting-label">Enable screen sharing</span>
+            <span class="setting-description">Allow sharing your screen during calls</span>
+          </span>
+          <input type="checkbox" id="screenShare" checked>
+          <span class="toggle"></span>
+        </label>
+
+        <div class="setting-item setting-item-inline">
+          <span class="setting-info">
+            <span class="setting-label">Link expiry</span>
+            <span class="setting-description">Call links expire after this time</span>
+          </span>
+          <select id="callExpiry">
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15" selected>15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hour</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <h2>Keyboard Shortcut</h2>
+        <p class="shortcut-display">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>
+        </p>
+        <p class="setting-hint">Change in chrome://extensions/shortcuts</p>
+      </div>
+    </main>
+
+    <footer class="popup-footer">
+      <span class="status" id="status"></span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
