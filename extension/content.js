@@ -11,26 +11,40 @@
   let isInjected = false;
   let sidebarIndicatorInjected = false;
 
-  // DOM Selectors (using data-testid for stability)
+  // DOM Selectors (using multiple fallbacks for WhatsApp Web's changing DOM)
   const SELECTORS = {
-    // Chat header area
-    conversationHeader: '[data-testid="conversation-header"]',
-    chatTitle: '[data-testid="conversation-info-header-chat-title"]',
+    // Chat header area - multiple fallbacks
+    conversationHeader: '[data-testid="conversation-header"], [data-testid="conversation-panel-header"], header[data-testid]',
+    chatTitle: '[data-testid="conversation-info-header-chat-title"], [data-testid="conversation-title"], header span[title]',
     headerActions: '[data-testid="conversation-header"] [data-testid="menu"]',
 
-    // Alternative selectors
-    chatTitleAlt: 'header span[dir="auto"][title]',
-    headerIconsContainer: 'header [role="button"]',
+    // Alternative selectors - broader matching
+    chatTitleAlt: 'header span[dir="auto"][title], #main header span[title]',
+    headerIconsContainer: 'header [role="button"], #main header div[role="button"]',
+
+    // Header with video call button area
+    headerRightSection: 'header > div:last-child, #main header > div > div:last-child',
 
     // Right side empty screen (when no chat is open)
-    introScreen: '[data-testid="intro-md-beta-logo-dark"], [data-testid="intro-md-beta-logo-light"]',
-    emptyScreen: '[data-icon="intro-md-beta-logo-dark"], [data-icon="intro-md-beta-logo-light"]',
+    introScreen: '[data-testid="intro-md-beta-logo-dark"], [data-testid="intro-md-beta-logo-light"], [data-icon="intro-md-beta-logo-dark"], [data-icon="intro-md-beta-logo-light"]',
+    defaultScreen: '[data-testid="default-user"], [data-testid="intro-title"]',
     mainPanel: '#main',
+    sidePanel: '#side, [data-testid="side"]',
 
     // Message input
-    messageInput: '[data-testid="conversation-compose-box-input"]',
-    sendButton: '[data-testid="send"]'
+    messageInput: '[data-testid="conversation-compose-box-input"], [contenteditable="true"][data-tab]',
+    sendButton: '[data-testid="send"], [data-icon="send"]'
   };
+
+  // Debug helper
+  function debug(message, data = null) {
+    const prefix = '[WPCall Debug]';
+    if (data) {
+      console.log(prefix, message, data);
+    } else {
+      console.log(prefix, message);
+    }
+  }
 
   // Generate UUID for room
   function generateRoomId() {
@@ -246,74 +260,139 @@
 
   // Create video call button
   function createCallButton() {
-    const button = document.createElement('div');
-    button.className = 'wpcall-btn';
-    button.setAttribute('role', 'button');
-    button.setAttribute('tabindex', '0');
-    button.setAttribute('aria-label', 'Start video call');
-    button.setAttribute('data-wpcall', 'true');
+    // Create wrapper span similar to WhatsApp's structure
+    const wrapper = document.createElement('span');
+    wrapper.className = 'html-span wpcall-wrapper';
+    wrapper.setAttribute('data-wpcall', 'true');
 
+    // Create button element
+    const button = document.createElement('button');
+    button.setAttribute('aria-label', 'Start WPCall video call');
+    button.setAttribute('type', 'button');
+    button.setAttribute('tabindex', '0');
+    button.className = 'wpcall-btn';
+
+    // Create inner structure
     button.innerHTML = `
-      <span data-icon="video-call">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-        </svg>
-      </span>
+      <div class="wpcall-btn-inner">
+        <div class="wpcall-btn-icon">
+          <span aria-hidden="true" data-icon="wpcall-video" class="wpcall-icon">
+            <svg viewBox="0 0 24 24" height="24" width="24" preserveAspectRatio="xMidYMid meet" fill="none">
+              <path d="M4 20C3.45 20 2.97917 19.8042 2.5875 19.4125C2.19583 19.0208 2 18.55 2 18V6C2 5.45 2.19583 4.97917 2.5875 4.5875C2.97917 4.19583 3.45 4 4 4H16C16.55 4 17.0208 4.19583 17.4125 4.5875C17.8042 4.97917 18 5.45 18 6V10.5L21.15 7.35C21.3167 7.18333 21.5 7.14167 21.7 7.225C21.9 7.30833 22 7.46667 22 7.7V16.3C22 16.5333 21.9 16.6917 21.7 16.775C21.5 16.8583 21.3167 16.8167 21.15 16.65L18 13.5V18C18 18.55 17.8042 19.0208 17.4125 19.4125C17.0208 19.8042 16.55 20 16 20H4Z" fill="#00a884"></path>
+            </svg>
+          </span>
+        </div>
+      </div>
     `;
 
-    button.addEventListener('click', handleCallClick);
-    button.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleCallClick();
-      }
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleCallClick();
     });
 
-    return button;
+    wrapper.appendChild(button);
+    return wrapper;
   }
 
   // Inject call button into chat header
   function injectCallButton() {
     // Check if already injected
     if (document.querySelector('[data-wpcall="true"]')) {
+      debug('Button already injected');
       return true;
     }
 
-    // Find conversation header
-    const header = document.querySelector(SELECTORS.conversationHeader);
-    if (!header) return false;
+    // Try to find the main panel first
+    const mainPanel = document.querySelector('#main');
+    if (!mainPanel) {
+      debug('No #main panel found - no chat open');
+      return false;
+    }
 
-    // Find icons area (near menu button)
-    const menuBtn = header.querySelector('[data-testid="menu"]');
-    const searchBtn = header.querySelector('[data-testid="search"]');
+    // Find header within main panel
+    const header = mainPanel.querySelector('header');
+    if (!header) {
+      debug('No header found in #main');
+      return false;
+    }
 
-    // Find the container for header actions
+    debug('Found header', header);
+
+    // Find the search button by aria-label or data-icon
+    const searchBtn = header.querySelector('button[aria-label="Search"], [data-icon="search-refreshed"]');
+    const menuBtn = header.querySelector('button[aria-label="Menu"], [data-icon="more-refreshed"]');
+
+    debug('Search button:', searchBtn);
+    debug('Menu button:', menuBtn);
+
     let iconsContainer = null;
+    let insertBefore = null;
 
-    if (menuBtn) {
-      iconsContainer = menuBtn.parentElement;
-    } else if (searchBtn) {
-      iconsContainer = searchBtn.parentElement;
-    } else {
-      // Fallback: find any button-like elements in header
-      const buttons = header.querySelectorAll('[role="button"]');
-      if (buttons.length > 0) {
-        iconsContainer = buttons[buttons.length - 1].parentElement;
+    // The search button is inside a span > div hierarchy
+    // We need to find the container that holds all the action buttons
+    if (searchBtn) {
+      // Navigate up to find the container: button -> div -> div -> span -> div (container)
+      let btn = searchBtn.closest('button') || searchBtn;
+      let spanWrapper = btn.closest('span.html-span') || btn.parentElement?.parentElement?.parentElement;
+      if (spanWrapper) {
+        iconsContainer = spanWrapper.parentElement;
+        insertBefore = spanWrapper;
+        debug('Found container via search button', iconsContainer);
       }
     }
 
-    if (!iconsContainer) return false;
+    // Fallback: use menu button
+    if (!iconsContainer && menuBtn) {
+      let btn = menuBtn.closest('button') || menuBtn;
+      let spanWrapper = btn.closest('span.html-span') || btn.parentElement?.parentElement?.parentElement;
+      if (spanWrapper) {
+        iconsContainer = spanWrapper.parentElement;
+        insertBefore = spanWrapper;
+        debug('Found container via menu button', iconsContainer);
+      }
+    }
+
+    // Fallback: find the div containing multiple buttons
+    if (!iconsContainer) {
+      const allButtons = header.querySelectorAll('button[aria-label]');
+      debug('All buttons in header:', allButtons.length);
+      if (allButtons.length > 0) {
+        const lastBtn = allButtons[allButtons.length - 1];
+        // Go up to find a common container
+        iconsContainer = lastBtn.parentElement?.parentElement?.parentElement?.parentElement;
+        insertBefore = lastBtn.parentElement?.parentElement?.parentElement;
+        debug('Fallback container', iconsContainer);
+      }
+    }
+
+    if (!iconsContainer) {
+      debug('Could not find icons container');
+      return false;
+    }
 
     // Create and inject button
     const callBtn = createCallButton();
+    debug('Created call button, injecting...');
 
-    // Insert before menu button for natural placement
-    if (menuBtn) {
-      iconsContainer.insertBefore(callBtn, menuBtn);
+    // Insert the button
+    if (insertBefore && insertBefore.parentElement === iconsContainer) {
+      iconsContainer.insertBefore(callBtn, insertBefore);
     } else {
+      // Append after the existing video call button area
+      const existingVideoArea = header.querySelector('[data-icon="video-call-refreshed"]');
+      if (existingVideoArea) {
+        const videoWrapper = existingVideoArea.closest('span.html-span') || existingVideoArea.parentElement?.parentElement?.parentElement;
+        if (videoWrapper && videoWrapper.parentElement) {
+          videoWrapper.parentElement.insertBefore(callBtn, videoWrapper.nextSibling);
+          debug('Inserted after existing video button');
+          return true;
+        }
+      }
       iconsContainer.appendChild(callBtn);
     }
 
+    debug('Button injected successfully!');
     return true;
   }
 

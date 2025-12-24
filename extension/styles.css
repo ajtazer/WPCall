@@ -1,33 +1,49 @@
 /* WPCall - Injected styles for WhatsApp Web */
 
-/* Video call button - matches WhatsApp's icon buttons */
+/* Wrapper span */
+.wpcall-wrapper {
+  display: inline-block;
+}
+
+/* Video call button - matches WhatsApp's button style */
 .wpcall-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  color: var(--icon-lighter, #8696a0);
-  margin: 0 2px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.15s ease;
 }
 
 .wpcall-btn:hover {
-  background-color: var(--background-default-hover, rgba(134, 150, 160, 0.15));
+  background-color: rgba(134, 150, 160, 0.15);
 }
 
 .wpcall-btn:active {
-  background-color: var(--background-default-active, rgba(134, 150, 160, 0.25));
+  background-color: rgba(134, 150, 160, 0.25);
 }
 
 .wpcall-btn:focus {
   outline: none;
 }
 
-.wpcall-btn:focus-visible {
-  box-shadow: 0 0 0 2px var(--focus-ring, #00a884);
+.wpcall-btn-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wpcall-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wpcall-icon {
+  display: flex;
 }
 
 .wpcall-btn svg {
