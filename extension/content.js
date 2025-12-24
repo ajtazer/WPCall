@@ -258,8 +258,35 @@
     window.open(callLink, '_blank');
   }
 
+  // Global click handler (set up once)
+  let globalClickHandlerSet = false;
+
+  function setupGlobalClickHandler() {
+    if (globalClickHandlerSet) return;
+    globalClickHandlerSet = true;
+
+    // Use capturing phase at document level to intercept clicks before WhatsApp handles them
+    document.addEventListener('click', (e) => {
+      // Check if click is on our hijacked button or its children
+      const hijackedBtn = e.target.closest('[data-wpcall-hijacked="true"]');
+      if (hijackedBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        debug('WPCall button clicked via global handler!');
+        handleCallClick();
+        return false;
+      }
+    }, true); // true = capturing phase
+
+    debug('Global click handler set up');
+  }
+
   // Hijack WhatsApp's existing video call button
   function injectCallButton() {
+    // Set up global click handler first
+    setupGlobalClickHandler();
+
     // Check if already hijacked
     if (document.querySelector('[data-wpcall-hijacked="true"]')) {
       debug('Button already hijacked');
@@ -276,9 +303,9 @@
 
     debug('Found WhatsApp video call button, hijacking...', existingVideoBtn);
 
-    // Mark as hijacked
+    // Mark as hijacked (this is what our global handler looks for)
     existingVideoBtn.setAttribute('data-wpcall-hijacked', 'true');
-    existingVideoBtn.setAttribute('aria-label', 'Start video call');
+    existingVideoBtn.setAttribute('aria-label', 'Start video call with WPCall');
 
     // Remove the dropdown arrow (second span with the arrow icon)
     const dropdownArrow = existingVideoBtn.querySelector('[data-icon="ic-arrow-drop-down"], .xdwrcjd');
@@ -292,27 +319,6 @@
     if (videoIcon) {
       videoIcon.setAttribute('fill', '#00a884');
       debug('Changed icon color to green');
-    }
-
-    // Clone and replace to remove all existing event listeners
-    const newBtn = existingVideoBtn.cloneNode(true);
-    existingVideoBtn.parentNode.replaceChild(newBtn, existingVideoBtn);
-
-    // Add our click handler
-    newBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      debug('WPCall button clicked!');
-      handleCallClick();
-    }, true);
-
-    // Also capture on the wrapper to prevent WhatsApp's popup
-    const wrapper = newBtn.closest('span.html-span');
-    if (wrapper) {
-      wrapper.addEventListener('click', (e) => {
-        e.stopPropagation();
-      }, true);
     }
 
     debug('Button hijacked successfully!');
