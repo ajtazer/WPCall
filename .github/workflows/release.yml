@@ -1,0 +1,69 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v1.0.0, v1.2.3, etc.
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Create extension zip
+        run: |
+          cd extension
+          zip -r ../WPCall-${{ steps.version.outputs.VERSION }}.zip .
+          cd ..
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGES=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD --no-merges)
+          else
+            CHANGES=$(git log --pretty=format:"- %s" --no-merges -10)
+          fi
+          
+          # Write to file for multi-line output
+          echo "CHANGES<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: WPCall ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 📹 WPCall ${{ steps.version.outputs.VERSION }}
+            
+            ### Installation
+            1. Download `WPCall-${{ steps.version.outputs.VERSION }}.zip`
+            2. Extract the zip file
+            3. Go to `chrome://extensions/`
+            4. Enable "Developer mode"
+            5. Click "Load unpacked" and select the extracted folder
+            
+            ### Changes
+            ${{ steps.changelog.outputs.CHANGES }}
+            
+            ---
+            Full documentation: [README](https://github.com/ajtazer/WPCall#readme)
+          files: |
+            WPCall-${{ steps.version.outputs.VERSION }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
