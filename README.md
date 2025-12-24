@@ -1,164 +1,173 @@
-# 📹 Call for WhatsApp Web  
-### Video calls for WhatsApp Web.
+# 📹 WPCall - Video Calls for WhatsApp Web
 
-WhatsApp Web is fast.  
-WhatsApp Desktop is heavy.
-
-This lets you **make calls without leaving WhatsApp Web**.
+> Make video calls directly from WhatsApp Web. No desktop app required.
 
 ---
 
-## 💡 What it fixes
+## 🖼️ Screenshots
 
-WhatsApp Web has no call button.  
-This adds one.
+### Extension in Action
+<img width="923" height="331" alt="image" src="https://github.com/user-attachments/assets/c698fd77-cc1e-4124-8611-bf6b090df6e9" />
+<!-- INSERT: Screenshot of WhatsApp Web with the green video call button visible in chat header -->
 
-A 📹 icon appears directly inside the active chat on **:contentReference[oaicite:0]{index=0}**.
+### Empty Screen Info
+<!-- INSERT: Screenshot showing the WPCall info card when no chat is open -->
+<img width="1440" height="858" alt="image" src="https://github.com/user-attachments/assets/d91f05aa-532b-4bfb-9f62-656f24e5c5da" />
 
-Click it → share link → instant call.
+### Video Call Page
+<!-- INSERT: Screenshot of the video call page with both participants -->
+<img width="1052" height="700" alt="image" src="https://github.com/user-attachments/assets/485cc154-ffc7-4fb3-a25c-c948bdbef17e" />
 
----
+### Settings
+<!-- INSERT: Screenshot of the extension popup/settings page -->
+<img width="486" height="646" alt="image" src="https://github.com/user-attachments/assets/46f09372-5b81-4ad3-8dd4-5d3d62a72edb" />
 
-## ⚡ How it works
-
-- Detects the currently open chat
-- Injects a native-looking call button
-- Generates a secure, one-time call link
-- Peer-to-peer video/audio (WebRTC)
-- No servers touching your media
-
-No app switching.  
-No desktop client.  
-No friction.
 
 ---
 
-## 🧪 How to use
+## ✨ Features
 
-1. Open https://web.whatsapp.com/
-2. Open any chat
-3. Click the 📹 icon
-4. Send the generated link
-5. Start talking
-
-That’s it.
-
----
-
-## 🔐 Privacy (by design)
-
-- Peer-to-peer encrypted calls
-- No message reading
-- No contacts stored
-- No tracking
-- No accounts
-
-If WhatsApp Web disappears, this should too.
+| Feature | Description |
+|---------|-------------|
+| 📹 **One-Click Calls** | Video call button injected right into WhatsApp Web |
+| 🔒 **P2P Encrypted** | Direct peer-to-peer calls - no servers touch your media |
+| 🖥️ **Screen Sharing** | Share your screen during calls |
+| ⚡ **Zero Friction** | Click → Share link → Start talking |
+| 🌗 **Native Look** | Matches WhatsApp's design automatically |
+| ⚙️ **Configurable** | Audio-only mode, link expiry, auto-send options |
 
 ---
 
-## 🧠 Why it exists
+## 🚀 Quick Start
 
-If you prefer WhatsApp Web over Desktop,  
-this **completes it**.
+### Install the Extension
+
+1. Download or clone this repo
+2. Open `chrome://extensions/` (or `brave://extensions/`)
+3. Enable **Developer mode** (top right)
+4. Click **Load unpacked**
+5. Select the `extension` folder
+
+<!-- INSERT: GIF or screenshot showing extension loading process -->
+
+### How to Use
+
+1. **Open** [web.whatsapp.com](https://web.whatsapp.com)
+2. **Open** any chat
+3. **Click** the green 📹 button in the header
+4. **Send** the auto-generated message
+5. **Wait** for the other person to join
+
+<!-- INSERT: GIF showing the full flow from clicking button to starting call -->
+
+---
+
+## ⚙️ Settings
+
+Click the extension icon in your toolbar to access settings:
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| Auto-copy message | ✅ ON | Copies call link to clipboard |
+| Auto-send message | ❌ OFF | Sends message automatically |
+| Audio-only calls | ❌ OFF | Start with camera off |
+| Screen sharing | ✅ ON | Allow screen sharing |
+| Link expiry | 15 min | How long links stay valid |
+
+<!-- INSERT: Annotated screenshot of settings panel -->
+
+---
+
+## 🔐 Privacy First
+
+- ✅ **Peer-to-peer** - Your video/audio goes directly to the other person
+- ✅ **No data collection** - We don't store messages, contacts, or calls
+- ✅ **No accounts needed** - Works instantly
+- ✅ **Open source** - Inspect the code yourself
+
+---
+
+## 🛠️ Technical Details
+
+```
+WPCall/
+├── extension/              # Chrome/Brave extension
+│   ├── manifest.json       # Extension config
+│   ├── content.js          # WhatsApp Web integration
+│   ├── background.js       # Service worker
+│   ├── popup.html/js/css   # Settings page
+│   └── icons/              # Extension icons
+│
+├── call-page/              # Video call page (GitHub Pages)
+│   ├── index.html          # Call UI
+│   ├── call.js             # WebRTC logic
+│   └── call.css            # Styling
+│
+└── signaling-server/       # Cloudflare Workers
+    ├── worker.js           # WebSocket signaling
+    └── wrangler.toml       # Cloudflare config
+```
+
+### How It Works
+
+1. **Extension** injects a call button into WhatsApp Web
+2. **Click** generates a secure room ID + token
+3. **Message** with call link is pasted to chat
+4. **Call page** handles WebRTC connection via signaling server
+5. **P2P connection** established for video/audio
+
+### Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Extension | Chrome Manifest V3 |
+| Call Page | Vanilla JS + WebRTC |
+| Signaling | Cloudflare Workers + Durable Objects |
+| STUN/TURN | Google STUN + OpenRelay TURN |
+
+---
+
+## 🌐 Deployed Services
+
+| Service | URL |
+|---------|-----|
+| Call Page | https://ajtazer.github.io/WPCall/ |
+| Signaling | wpcall-signaling.ajcoolx619.workers.dev |
+
+---
+
+## 📋 Self-Hosting
+
+### Deploy Signaling Server
+
+```bash
+cd signaling-server
+npm install
+npx wrangler login
+npx wrangler deploy
+```
+
+### Deploy Call Page
+
+Push to GitHub and enable Pages, or host anywhere static.
 
 ---
 
 ## ⚠️ Disclaimer
 
-Unofficial third-party extension.  
+This is an **unofficial** third-party extension.  
 Not affiliated with WhatsApp or Meta.
 
+Use at your own discretion.
 
+---
 
-<!-- # Call for WhatsApp Web
+## 📄 License
 
-> Video calls for WhatsApp Web.
+MIT
 
-A Chrome extension that adds native-looking video call functionality to WhatsApp Web using WebRTC P2P calling.
+---
 
-## Features
-
-- 📹 Video call button injected directly into WhatsApp Web chat header
-- 🔒 Secure P2P calls using WebRTC (STUN + TURN)
-- 📋 Auto-copy and paste call message to chat
-- ⚙️ Configurable settings (audio-only, screen sharing, link expiry)
-- 🌗 Automatic light/dark mode support
-- ⌨️ Keyboard shortcut support (Ctrl/Cmd + Shift + V)
-
-## Project Structure
-
-```
-WPCall/
-├── extension/           # Chrome extension
-│   ├── manifest.json    # Extension manifest
-│   ├── content.js       # DOM injection script
-│   ├── background.js    # Service worker
-│   ├── styles.css       # Injected styles
-│   ├── popup.html/js/css # Settings page
-│   └── icons/           # Extension icons
-├── call-page/           # Video call page (GitHub Pages)
-│   ├── index.html
-│   ├── call.js          # WebRTC implementation
-│   └── call.css
-└── signaling-server/    # Cloudflare Workers
-    ├── worker.js        # Signaling server
-    ├── wrangler.toml    # Cloudflare config
-    └── package.json
-```
-
-## Installation
-
-### 1. Deploy Signaling Server
-
-```bash
-cd signaling-server
-npm install
-npx wrangler deploy
-```
-
-### 2. Deploy Call Page
-
-Push the `call-page` folder to GitHub and enable GitHub Pages, or:
-
-```bash
-# The call page will be available at:
-# https://ajtazer.github.io/WPCall/call-page/
-```
-
-### 3. Load Extension
-
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `extension` folder
-
-## Usage
-
-1. Open [WhatsApp Web](https://web.whatsapp.com/)
-2. Open a chat
-3. Click the video call button in the chat header
-4. The call message is copied and pasted to the chat
-5. The call page opens in a new tab
-6. Share the link with the other person!
-
-## Configuration
-
-Click the extension icon to access settings:
-
-- **Auto-copy message**: Copy call message to clipboard (ON by default)
-- **Auto-send message**: Automatically send the message (OFF by default)
-- **Audio-only calls**: Start with video disabled
-- **Screen sharing**: Allow sharing your screen
-- **Link expiry**: How long call links are valid (5-60 min)
-
-## Technical Details
-
-- **WebRTC**: P2P video/audio with STUN + TURN servers
-- **Signaling**: Cloudflare Workers with Durable Objects
-- **Extension**: Manifest V3 with content scripts
-- **Styling**: Uses WhatsApp's CSS variables for native look
-
-## License
-
-MIT -->
+<p align="center">
+  Made with ❤️ for WhatsApp Web users who don't want the desktop app
+</p>
