@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=320">
   <title>Call for WhatsApp Web</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="popup-container">
     <header class="popup-header">
@@ -16,7 +18,7 @@
     <main class="settings-list">
       <div class="setting-group">
         <h2>Call Behavior</h2>
-        
+
         <label class="setting-item">
           <span class="setting-info">
             <span class="setting-label">Auto-copy message</span>
@@ -34,11 +36,20 @@
           <input type="checkbox" id="autoSend">
           <span class="toggle"></span>
         </label>
+
+        <label class="setting-item">
+          <span class="setting-info">
+            <span class="setting-label">Open call room immediately</span>
+            <span class="setting-description">Open call page when clicking the button</span>
+          </span>
+          <input type="checkbox" id="openCallRoom">
+          <span class="toggle"></span>
+        </label>
       </div>
 
       <div class="setting-group">
         <h2>Call Options</h2>
-        
+
         <label class="setting-item">
           <span class="setting-info">
             <span class="setting-label">Audio-only calls</span>
@@ -88,4 +99,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>

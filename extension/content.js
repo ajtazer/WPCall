@@ -84,8 +84,7 @@
 
   // Generate call message
   function generateCallMessage(chatName, callLink) {
-    let message = 'Hop on call here!! 📹';
-    message += `\n${callLink}`;
+    let message = `i am waiting here bruh!! \n${callLink}\n\nWant to make WhatsApp calls on the web? Check this out: https://github.com/ajtazer/WPCall`;
     return message;
   }
 
@@ -166,11 +165,18 @@
     // Focus the input
     input.focus();
 
-    // Try using execCommand for better compatibility with WhatsApp's contenteditable
-    await new Promise(r => setTimeout(r, 50));
+    // Wait a bit for focus
+    await new Promise(r => setTimeout(r, 100));
 
-    // Insert text using input simulation
-    document.execCommand('insertText', false, message);
+    // Clear any existing content first
+    input.innerHTML = '';
+
+    // Create a paragraph element with the message
+    const p = document.createElement('p');
+    p.className = '_aupe copyable-text x15bjb6t x1n2onr6';
+    p.setAttribute('dir', 'auto');
+    p.textContent = message;
+    input.appendChild(p);
 
     // Trigger input event to notify WhatsApp
     input.dispatchEvent(new InputEvent('input', {
@@ -210,7 +216,7 @@
           audioOnly: false,
           screenShare: true,
           callExpiry: 15,
-          shortcut: 'Ctrl+Shift+V'
+          openCallRoom: false  // New setting - off by default
         }, resolve);
       } else {
         resolve({
@@ -218,7 +224,8 @@
           autoSend: false,
           audioOnly: false,
           screenShare: true,
-          callExpiry: 15
+          callExpiry: 15,
+          openCallRoom: false
         });
       }
     });
@@ -236,7 +243,9 @@
       const sent = await autoSendMessage(message);
       if (sent) {
         showToast('Call message sent');
-        window.open(callLink, '_blank');
+        if (settings.openCallRoom) {
+          window.open(callLink, '_blank');
+        }
         return;
       }
     }
@@ -245,11 +254,13 @@
     if (settings.autoCopy) {
       await copyToClipboard(message);
       await pasteToChat(message);
-      showToast('Message copied');
+      showToast('Message ready - press send!');
     }
 
-    // Open call page
-    window.open(callLink, '_blank');
+    // Only open call page if setting is enabled
+    if (settings.openCallRoom) {
+      window.open(callLink, '_blank');
+    }
   }
 
   // Global click handler (set up once)
