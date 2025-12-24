@@ -260,6 +260,7 @@
     globalClickHandlerSet = true;
 
     // Use capturing phase at document level to intercept clicks before WhatsApp handles them
+    let lastClickTime = 0;
     document.addEventListener('click', (e) => {
       // Check if click is on our hijacked button or its children
       const hijackedBtn = e.target.closest('[data-wpcall-hijacked="true"]');
@@ -267,6 +268,15 @@
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+
+        // Debounce - prevent double clicks within 1 second
+        const now = Date.now();
+        if (now - lastClickTime < 1000) {
+          debug('Click debounced');
+          return false;
+        }
+        lastClickTime = now;
+
         debug('WPCall button clicked via global handler!');
         handleCallClick();
         return false;
