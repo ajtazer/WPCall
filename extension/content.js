@@ -31,9 +31,9 @@
     mainPanel: '#main',
     sidePanel: '#side, [data-testid="side"]',
 
-    // Message input
-    messageInput: '[data-testid="conversation-compose-box-input"], [contenteditable="true"][data-tab]',
-    sendButton: '[data-testid="send"], [data-icon="send"]'
+    // Message input - chat message box (not search)
+    messageInput: '[contenteditable="true"][data-tab="10"], [aria-label^="Type a message"], [data-testid="conversation-compose-box-input"]',
+    sendButton: '[data-testid="send"], [data-icon="send"], [aria-label="Send"]'
   };
 
   // Debug helper
@@ -84,14 +84,8 @@
 
   // Generate call message
   function generateCallMessage(chatName, callLink) {
-    let message = '📹 Video call started';
-
-    if (chatName) {
-      const prefix = isGroupChat(chatName) ? 'for' : 'with';
-      message += ` ${prefix} "${chatName}"`;
-    }
-
-    message += `\nJoin here → ${callLink}`;
+    let message = 'Hop on call here!! 📹';
+    message += `\n${callLink}`;
     return message;
   }
 
@@ -330,7 +324,25 @@
     const indicator = document.createElement('div');
     indicator.className = 'wpcall-empty-indicator';
     indicator.setAttribute('data-wpcall-indicator', 'true');
-    indicator.textContent = '📹 Calls for WhatsApp enabled';
+    indicator.innerHTML = `
+      <div class="wpcall-info-card">
+        <div class="wpcall-info-header">
+          <span class="wpcall-info-icon">📹</span>
+          <span class="wpcall-info-title">WPCall is Active</span>
+        </div>
+        <div class="wpcall-info-features">
+          <div class="wpcall-feature">✓ P2P Video Calls (no WhatsApp servers)</div>
+          <div class="wpcall-feature">✓ Screen Sharing</div>
+          <div class="wpcall-feature">✓ Works in any chat</div>
+        </div>
+        <div class="wpcall-info-howto">
+          <strong>How to use:</strong> Open any chat and click the green video button
+        </div>
+        <div class="wpcall-info-settings">
+          <strong>Settings:</strong> Click extension icon in toolbar → Pin it for easy access
+        </div>
+      </div>
+    `;
     return indicator;
   }
 
@@ -341,25 +353,31 @@
       return true;
     }
 
-    // Find the intro/empty screen on the right side
-    const introLogo = document.querySelector(SELECTORS.introScreen) ||
-      document.querySelector(SELECTORS.emptyScreen);
-
-    if (introLogo) {
-      // Find parent container and append indicator
-      let container = introLogo.closest('[data-testid]') || introLogo.parentElement?.parentElement;
-      if (container) {
-        const indicator = createEmptyScreenIndicator();
-        container.appendChild(indicator);
-        return true;
-      }
+    // Don't inject if a chat is open
+    if (document.querySelector('[data-wpcall-hijacked="true"]') ||
+      document.querySelector('button[aria-label="Get the app for calling"]')) {
+      return false;
     }
 
-    // Fallback: try to find the main empty area
-    const mainPanel = document.querySelector('#main, [data-testid="default-user"]');
-    if (mainPanel && !document.querySelector(SELECTORS.conversationHeader)) {
+    // Find the "Download WhatsApp" container - it has the Lottie animation
+    const downloadContainer = document.querySelector('.xktia5q, [class*="xktia5q"]');
+    if (downloadContainer) {
       const indicator = createEmptyScreenIndicator();
-      mainPanel.appendChild(indicator);
+      // Insert relative to the download container
+      downloadContainer.style.position = 'relative';
+      downloadContainer.appendChild(indicator);
+      debug('Injected indicator in download container');
+      return true;
+    }
+
+    // Fallback: Find any large right-side panel
+    const rightPanel = document.querySelector('#main') ||
+      document.querySelector('[data-testid="default-user"]');
+    if (rightPanel && !document.querySelector('header button[aria-label]')) {
+      const indicator = createEmptyScreenIndicator();
+      rightPanel.style.position = 'relative';
+      rightPanel.appendChild(indicator);
+      debug('Injected indicator in right panel');
       return true;
     }
 

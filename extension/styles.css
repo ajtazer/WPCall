@@ -50,22 +50,70 @@
   display: block;
 }
 
-/* Right-side empty screen indicator */
+/* Right-side empty screen indicator - Info Card */
 .wpcall-empty-indicator {
   position: absolute;
-  bottom: 24px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.wpcall-info-card {
+  background: linear-gradient(135deg, rgba(0, 168, 132, 0.15) 0%, rgba(37, 211, 102, 0.1) 100%);
+  border: 1px solid rgba(0, 168, 132, 0.3);
+  border-radius: 16px;
+  padding: 20px 24px;
+  min-width: 320px;
+  max-width: 400px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.wpcall-info-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 10px 20px;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(134, 150, 160, 0.2);
+}
+
+.wpcall-info-icon {
+  font-size: 24px;
+}
+
+.wpcall-info-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #00a884;
+}
+
+.wpcall-info-features {
+  margin-bottom: 16px;
+}
+
+.wpcall-feature {
+  font-size: 14px;
+  color: #e9edef;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wpcall-info-howto,
+.wpcall-info-settings {
   font-size: 13px;
-  color: var(--secondary-lighter, #8696a0);
-  background-color: var(--background-default-hover, rgba(134, 150, 160, 0.1));
-  border-radius: 20px;
-  user-select: none;
-  pointer-events: none;
+  color: #8696a0;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.wpcall-info-howto strong,
+.wpcall-info-settings strong {
+  color: #aebac1;
 }
 
 /* Toast notification - WhatsApp native style */
