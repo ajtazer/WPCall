@@ -258,141 +258,64 @@
     window.open(callLink, '_blank');
   }
 
-  // Create video call button
-  function createCallButton() {
-    // Create wrapper span similar to WhatsApp's structure
-    const wrapper = document.createElement('span');
-    wrapper.className = 'html-span wpcall-wrapper';
-    wrapper.setAttribute('data-wpcall', 'true');
-
-    // Create button element
-    const button = document.createElement('button');
-    button.setAttribute('aria-label', 'Start WPCall video call');
-    button.setAttribute('type', 'button');
-    button.setAttribute('tabindex', '0');
-    button.className = 'wpcall-btn';
-
-    // Create inner structure
-    button.innerHTML = `
-      <div class="wpcall-btn-inner">
-        <div class="wpcall-btn-icon">
-          <span aria-hidden="true" data-icon="wpcall-video" class="wpcall-icon">
-            <svg viewBox="0 0 24 24" height="24" width="24" preserveAspectRatio="xMidYMid meet" fill="none">
-              <path d="M4 20C3.45 20 2.97917 19.8042 2.5875 19.4125C2.19583 19.0208 2 18.55 2 18V6C2 5.45 2.19583 4.97917 2.5875 4.5875C2.97917 4.19583 3.45 4 4 4H16C16.55 4 17.0208 4.19583 17.4125 4.5875C17.8042 4.97917 18 5.45 18 6V10.5L21.15 7.35C21.3167 7.18333 21.5 7.14167 21.7 7.225C21.9 7.30833 22 7.46667 22 7.7V16.3C22 16.5333 21.9 16.6917 21.7 16.775C21.5 16.8583 21.3167 16.8167 21.15 16.65L18 13.5V18C18 18.55 17.8042 19.0208 17.4125 19.4125C17.0208 19.8042 16.55 20 16 20H4Z" fill="#00a884"></path>
-            </svg>
-          </span>
-        </div>
-      </div>
-    `;
-
-    button.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handleCallClick();
-    });
-
-    wrapper.appendChild(button);
-    return wrapper;
-  }
-
-  // Inject call button into chat header
+  // Hijack WhatsApp's existing video call button
   function injectCallButton() {
-    // Check if already injected
-    if (document.querySelector('[data-wpcall="true"]')) {
-      debug('Button already injected');
+    // Check if already hijacked
+    if (document.querySelector('[data-wpcall-hijacked="true"]')) {
+      debug('Button already hijacked');
       return true;
     }
 
-    // Try to find the main panel first
-    const mainPanel = document.querySelector('#main');
-    if (!mainPanel) {
-      debug('No #main panel found - no chat open');
+    // Find the existing WhatsApp video call button by aria-label
+    const existingVideoBtn = document.querySelector('button[aria-label="Get the app for calling"]');
+
+    if (!existingVideoBtn) {
+      debug('WhatsApp video call button not found');
       return false;
     }
 
-    // Find header within main panel
-    const header = mainPanel.querySelector('header');
-    if (!header) {
-      debug('No header found in #main');
-      return false;
+    debug('Found WhatsApp video call button, hijacking...', existingVideoBtn);
+
+    // Mark as hijacked
+    existingVideoBtn.setAttribute('data-wpcall-hijacked', 'true');
+    existingVideoBtn.setAttribute('aria-label', 'Start video call');
+
+    // Remove the dropdown arrow (second span with the arrow icon)
+    const dropdownArrow = existingVideoBtn.querySelector('[data-icon="ic-arrow-drop-down"], .xdwrcjd');
+    if (dropdownArrow) {
+      dropdownArrow.style.display = 'none';
+      debug('Hidden dropdown arrow');
     }
 
-    debug('Found header', header);
-
-    // Find the search button by aria-label or data-icon
-    const searchBtn = header.querySelector('button[aria-label="Search"], [data-icon="search-refreshed"]');
-    const menuBtn = header.querySelector('button[aria-label="Menu"], [data-icon="more-refreshed"]');
-
-    debug('Search button:', searchBtn);
-    debug('Menu button:', menuBtn);
-
-    let iconsContainer = null;
-    let insertBefore = null;
-
-    // The search button is inside a span > div hierarchy
-    // We need to find the container that holds all the action buttons
-    if (searchBtn) {
-      // Navigate up to find the container: button -> div -> div -> span -> div (container)
-      let btn = searchBtn.closest('button') || searchBtn;
-      let spanWrapper = btn.closest('span.html-span') || btn.parentElement?.parentElement?.parentElement;
-      if (spanWrapper) {
-        iconsContainer = spanWrapper.parentElement;
-        insertBefore = spanWrapper;
-        debug('Found container via search button', iconsContainer);
-      }
+    // Change the icon color to green to indicate it's active
+    const videoIcon = existingVideoBtn.querySelector('[data-icon="video-call-refreshed"] path');
+    if (videoIcon) {
+      videoIcon.setAttribute('fill', '#00a884');
+      debug('Changed icon color to green');
     }
 
-    // Fallback: use menu button
-    if (!iconsContainer && menuBtn) {
-      let btn = menuBtn.closest('button') || menuBtn;
-      let spanWrapper = btn.closest('span.html-span') || btn.parentElement?.parentElement?.parentElement;
-      if (spanWrapper) {
-        iconsContainer = spanWrapper.parentElement;
-        insertBefore = spanWrapper;
-        debug('Found container via menu button', iconsContainer);
-      }
+    // Clone and replace to remove all existing event listeners
+    const newBtn = existingVideoBtn.cloneNode(true);
+    existingVideoBtn.parentNode.replaceChild(newBtn, existingVideoBtn);
+
+    // Add our click handler
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      debug('WPCall button clicked!');
+      handleCallClick();
+    }, true);
+
+    // Also capture on the wrapper to prevent WhatsApp's popup
+    const wrapper = newBtn.closest('span.html-span');
+    if (wrapper) {
+      wrapper.addEventListener('click', (e) => {
+        e.stopPropagation();
+      }, true);
     }
 
-    // Fallback: find the div containing multiple buttons
-    if (!iconsContainer) {
-      const allButtons = header.querySelectorAll('button[aria-label]');
-      debug('All buttons in header:', allButtons.length);
-      if (allButtons.length > 0) {
-        const lastBtn = allButtons[allButtons.length - 1];
-        // Go up to find a common container
-        iconsContainer = lastBtn.parentElement?.parentElement?.parentElement?.parentElement;
-        insertBefore = lastBtn.parentElement?.parentElement?.parentElement;
-        debug('Fallback container', iconsContainer);
-      }
-    }
-
-    if (!iconsContainer) {
-      debug('Could not find icons container');
-      return false;
-    }
-
-    // Create and inject button
-    const callBtn = createCallButton();
-    debug('Created call button, injecting...');
-
-    // Insert the button
-    if (insertBefore && insertBefore.parentElement === iconsContainer) {
-      iconsContainer.insertBefore(callBtn, insertBefore);
-    } else {
-      // Append after the existing video call button area
-      const existingVideoArea = header.querySelector('[data-icon="video-call-refreshed"]');
-      if (existingVideoArea) {
-        const videoWrapper = existingVideoArea.closest('span.html-span') || existingVideoArea.parentElement?.parentElement?.parentElement;
-        if (videoWrapper && videoWrapper.parentElement) {
-          videoWrapper.parentElement.insertBefore(callBtn, videoWrapper.nextSibling);
-          debug('Inserted after existing video button');
-          return true;
-        }
-      }
-      iconsContainer.appendChild(callBtn);
-    }
-
-    debug('Button injected successfully!');
+    debug('Button hijacked successfully!');
     return true;
   }
 
@@ -447,7 +370,8 @@
 
   // Check if a chat is currently open
   function isChatOpen() {
-    return !!document.querySelector(SELECTORS.conversationHeader);
+    // Check for WhatsApp's video call button which only appears when a chat is open
+    return !!document.querySelector('button[aria-label="Get the app for calling"], [data-wpcall-hijacked="true"]');
   }
 
   // Main injection logic
