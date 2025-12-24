@@ -319,30 +319,45 @@
     return true;
   }
 
-  // Create right-side indicator (shown on empty screen)
+  // Create right-side indicator (replaces WhatsApp's download prompt)
   function createEmptyScreenIndicator() {
     const indicator = document.createElement('div');
     indicator.className = 'wpcall-empty-indicator';
     indicator.setAttribute('data-wpcall-indicator', 'true');
     indicator.innerHTML = `
       <div class="wpcall-info-card">
+        <button class="wpcall-close-btn" aria-label="Close">&times;</button>
         <div class="wpcall-info-header">
           <span class="wpcall-info-icon">📹</span>
-          <span class="wpcall-info-title">WPCall is Active</span>
+          <span class="wpcall-info-title">WPCall Active</span>
         </div>
-        <div class="wpcall-info-features">
-          <div class="wpcall-feature">✓ P2P Video Calls (no WhatsApp servers)</div>
-          <div class="wpcall-feature">✓ Screen Sharing</div>
-          <div class="wpcall-feature">✓ Works in any chat</div>
-        </div>
-        <div class="wpcall-info-howto">
-          <strong>How to use:</strong> Open any chat and click the green video button
-        </div>
-        <div class="wpcall-info-settings">
-          <strong>Settings:</strong> Click extension icon in toolbar → Pin it for easy access
+        <div class="wpcall-info-body">
+          <p class="wpcall-tagline">Video calls for WhatsApp Web</p>
+          <ul class="wpcall-features">
+            <li>P2P Video Calls</li>
+            <li>Screen Sharing</li>
+            <li>No WhatsApp servers</li>
+          </ul>
+          <div class="wpcall-howto">
+            <strong>To start a call:</strong><br>
+            Open any chat → Click the green video button
+          </div>
         </div>
       </div>
     `;
+
+    // Add close button handler
+    const closeBtn = indicator.querySelector('.wpcall-close-btn');
+    closeBtn.addEventListener('click', () => {
+      indicator.remove();
+      // Restore WhatsApp's original content if hidden
+      const hiddenContent = document.querySelector('[data-wpcall-hidden]');
+      if (hiddenContent) {
+        hiddenContent.style.display = '';
+        hiddenContent.removeAttribute('data-wpcall-hidden');
+      }
+    });
+
     return indicator;
   }
 
@@ -359,23 +374,27 @@
       return false;
     }
 
-    // Find the "Download WhatsApp" container - it has the Lottie animation
+    // Find the "Download WhatsApp" content area
     const downloadContainer = document.querySelector('.xktia5q, [class*="xktia5q"]');
     if (downloadContainer) {
+      // Hide WhatsApp's original content
+      const originalContent = downloadContainer.querySelector('.xg01cxk');
+      if (originalContent && !originalContent.hasAttribute('data-wpcall-hidden')) {
+        originalContent.setAttribute('data-wpcall-hidden', 'true');
+        originalContent.style.display = 'none';
+      }
+
       const indicator = createEmptyScreenIndicator();
-      // Insert relative to the download container
       downloadContainer.style.position = 'relative';
       downloadContainer.appendChild(indicator);
-      debug('Injected indicator in download container');
+      debug('Injected indicator, hid WhatsApp content');
       return true;
     }
 
-    // Fallback: Find any large right-side panel
-    const rightPanel = document.querySelector('#main') ||
-      document.querySelector('[data-testid="default-user"]');
+    // Fallback: Find the main right panel
+    const rightPanel = document.querySelector('#main');
     if (rightPanel && !document.querySelector('header button[aria-label]')) {
       const indicator = createEmptyScreenIndicator();
-      rightPanel.style.position = 'relative';
       rightPanel.appendChild(indicator);
       debug('Injected indicator in right panel');
       return true;

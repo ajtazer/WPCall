@@ -52,68 +52,110 @@
 
 /* Right-side empty screen indicator - Info Card */
 .wpcall-empty-indicator {
-  position: absolute;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  pointer-events: auto;
 }
 
 .wpcall-info-card {
-  background: linear-gradient(135deg, rgba(0, 168, 132, 0.15) 0%, rgba(37, 211, 102, 0.1) 100%);
-  border: 1px solid rgba(0, 168, 132, 0.3);
-  border-radius: 16px;
-  padding: 20px 24px;
-  min-width: 320px;
-  max-width: 400px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  position: relative;
+  background: rgba(17, 27, 33, 0.95);
+  border: 1px solid rgba(0, 168, 132, 0.4);
+  border-radius: 20px;
+  padding: 28px 32px;
+  max-width: 340px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Close button */
+.wpcall-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(134, 150, 160, 0.2);
+  color: #8696a0;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.wpcall-close-btn:hover {
+  background: rgba(134, 150, 160, 0.4);
+  color: #e9edef;
 }
 
 .wpcall-info-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(134, 150, 160, 0.2);
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .wpcall-info-icon {
-  font-size: 24px;
+  font-size: 28px;
 }
 
 .wpcall-info-title {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
   color: #00a884;
 }
 
-.wpcall-info-features {
-  margin-bottom: 16px;
-}
-
-.wpcall-feature {
-  font-size: 14px;
+.wpcall-info-body {
   color: #e9edef;
-  padding: 4px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.wpcall-info-howto,
-.wpcall-info-settings {
+.wpcall-tagline {
+  font-size: 14px;
+  color: #8696a0;
+  margin: 0 0 16px 0;
+}
+
+.wpcall-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.wpcall-features li {
+  font-size: 15px;
+  color: #e9edef;
+  padding: 6px 0;
+  padding-left: 24px;
+  position: relative;
+}
+
+.wpcall-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #00a884;
+  font-weight: bold;
+}
+
+.wpcall-howto {
   font-size: 13px;
   color: #8696a0;
-  line-height: 1.5;
-  margin-top: 8px;
+  line-height: 1.6;
+  padding-top: 16px;
+  border-top: 1px solid rgba(134, 150, 160, 0.2);
 }
 
-.wpcall-info-howto strong,
-.wpcall-info-settings strong {
+.wpcall-howto strong {
   color: #aebac1;
+  display: block;
+  margin-bottom: 4px;
 }
 
 /* Toast notification - WhatsApp native style */
