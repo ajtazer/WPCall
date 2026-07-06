@@ -1,15 +1,36 @@
 // Popup settings logic
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Show OS-appropriate keyboard shortcut (⌘ on macOS, Ctrl elsewhere).
+    // Show the ACTUAL bound keyboard shortcut (Chrome formats it per-OS, e.g.
+    // "⌘⇧U" on macOS, "Ctrl+Shift+V" elsewhere). Falls back to an OS-appropriate
+    // guess if the API is unavailable, and flags when nothing is bound.
     (function renderShortcut() {
         const display = document.getElementById('shortcutDisplay');
         if (!display) return;
+
         const platform = (navigator.userAgentData && navigator.userAgentData.platform) ||
             navigator.platform || '';
         const isMac = /mac/i.test(platform);
-        const keys = isMac ? ['⌘', 'Shift', 'V'] : ['Ctrl', 'Shift', 'V'];
-        display.innerHTML = keys.map(k => `<kbd>${k}</kbd>`).join(' + ');
+
+        function renderString(str) {
+            // Split "⌘⇧U" (mac, no separators) or "Ctrl+Shift+V" into <kbd> chips.
+            const parts = str.includes('+') ? str.split('+') : str.split('');
+            display.innerHTML = parts.map(k => `<kbd>${k.trim()}</kbd>`).join(' + ');
+        }
+
+        if (chrome?.commands?.getAll) {
+            chrome.commands.getAll((cmds) => {
+                const cmd = (cmds || []).find(c => c.name === 'start-call');
+                if (cmd && cmd.shortcut) {
+                    renderString(cmd.shortcut);
+                } else {
+                    display.innerHTML = '<span style="opacity:.7">Not set — assign it in ' +
+                        'chrome://extensions/shortcuts</span>';
+                }
+            });
+        } else {
+            renderString(isMac ? '⌘+Shift+U' : 'Ctrl+Shift+V');
+        }
     })();
 
     const elements = {
