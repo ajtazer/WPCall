@@ -32,9 +32,38 @@
     sidePanel: '#side, [data-testid="side"]',
 
     // Message input - chat message box (not search)
-    messageInput: '[contenteditable="true"][data-tab="10"], [aria-label^="Type a message"], [data-testid="conversation-compose-box-input"]',
+    // (confirmed 2026-07: div[role=textbox] with data-testid + data-tab="10")
+    messageInput: '[data-testid="conversation-compose-box-input"], [contenteditable="true"][data-tab="10"], div[role="textbox"][aria-label^="Type a message"]',
     sendButton: '[data-testid="send"], [data-icon="send"], [aria-label="Send"]'
   };
+
+  // Language-independent icon identifiers (WhatsApp renders these as <svg><title>id</title>).
+  // These survive locale changes and aria-label churn, unlike text labels.
+  const ICON = {
+    videoCall: 'ic-videocam',        // header video-call button
+    dropArrow: 'ic-arrow-drop-down', // chevron inside the video button
+    sendLink: 'ic-link'              // "Send call link" overflow-menu item
+  };
+
+  // Find the first element under `root` whose descendant <svg><title> matches titleId.
+  function elementWithIconTitle(root, titleId, tagName) {
+    if (!root) return null;
+    const titles = root.querySelectorAll('svg > title, svg title');
+    for (const t of titles) {
+      if (t.textContent.trim() === titleId) {
+        return tagName ? t.closest(tagName) : t.closest('svg');
+      }
+    }
+    return null;
+  }
+
+  // Locate the header video-call button by its icon (works for 1:1 "Video call"
+  // and group "Group video call", any language).
+  function findVideoCallButton() {
+    const header = document.querySelector('#main header');
+    if (!header) return null;
+    return elementWithIconTitle(header, ICON.videoCall, 'button');
+  }
 
   // Debug helper
   function debug(message, data = null) {
@@ -168,17 +197,24 @@
     // Wait a bit for focus
     await new Promise(r => setTimeout(r, 100));
 
-    // Clear any existing content first
-    input.innerHTML = '';
+    // WhatsApp's compose box is a rich-text (Lexical) editor. Directly setting
+    // innerHTML doesn't register with the editor's model, so we drive it through
+    // execCommand, which fires the beforeinput/input events the editor listens for.
+    try {
+      document.execCommand('selectAll', false, null);
+      document.execCommand('delete', false, null);
+      const ok = document.execCommand('insertText', false, message);
+      if (ok) return true;
+    } catch (e) {
+      debug('execCommand paste failed, falling back', e);
+    }
 
-    // Create a paragraph element with the message
+    // Fallback: manual DOM insertion + synthetic input event.
+    input.innerHTML = '';
     const p = document.createElement('p');
-    p.className = '_aupe copyable-text x15bjb6t x1n2onr6';
     p.setAttribute('dir', 'auto');
     p.textContent = message;
     input.appendChild(p);
-
-    // Trigger input event to notify WhatsApp
     input.dispatchEvent(new InputEvent('input', {
       bubbles: true,
       cancelable: true,
@@ -289,6 +325,11 @@
         lastClickTime = now;
 
         debug('WPCall button clicked via global handler!');
+        // If this was the overflow-menu "Send call link" item, close the menu
+        // so our composed message is visible.
+        if (hijackedBtn.getAttribute('data-wpcall-menuitem') === 'true') {
+          closeOpenMenu();
+        }
         handleCallClick();
         return false;
       }
@@ -297,47 +338,70 @@
     debug('Global click handler set up');
   }
 
-  // Hijack WhatsApp's existing video call button
+  // Hijack WhatsApp's existing video call button (header)
   function injectCallButton() {
     // Set up global click handler first
     setupGlobalClickHandler();
 
-    // Check if already hijacked
-    if (document.querySelector('[data-wpcall-hijacked="true"]')) {
-      debug('Button already hijacked');
-      return true;
-    }
+    // Find the header video-call button by its icon (language-independent).
+    const videoBtn = findVideoCallButton();
 
-    // Find the existing WhatsApp video call button by aria-label
-    const existingVideoBtn = document.querySelector('button[aria-label="Get the app for calling"]');
-
-    if (!existingVideoBtn) {
+    if (!videoBtn) {
       debug('WhatsApp video call button not found');
       return false;
     }
 
-    debug('Found WhatsApp video call button, hijacking...', existingVideoBtn);
+    // Already hijacked this exact button?
+    if (videoBtn.getAttribute('data-wpcall-hijacked') === 'true') {
+      return true;
+    }
+
+    debug('Found WhatsApp video call button, hijacking...', videoBtn);
 
     // Mark as hijacked (this is what our global handler looks for)
-    existingVideoBtn.setAttribute('data-wpcall-hijacked', 'true');
-    existingVideoBtn.setAttribute('aria-label', 'Start video call with WPCall');
+    videoBtn.setAttribute('data-wpcall-hijacked', 'true');
+    videoBtn.setAttribute('aria-label', 'Start video call with WPCall');
 
-    // Remove the dropdown arrow (second span with the arrow icon)
-    const dropdownArrow = existingVideoBtn.querySelector('[data-icon="ic-arrow-drop-down"], .xdwrcjd');
-    if (dropdownArrow) {
-      dropdownArrow.style.display = 'none';
+    // Hide the dropdown chevron (svg with the arrow-drop-down title)
+    const arrowSvg = elementWithIconTitle(videoBtn, ICON.dropArrow, 'svg');
+    if (arrowSvg) {
+      arrowSvg.style.display = 'none';
       debug('Hidden dropdown arrow');
     }
 
-    // Change the icon color to green to indicate it's active
-    const videoIcon = existingVideoBtn.querySelector('[data-icon="video-call-refreshed"] path');
-    if (videoIcon) {
-      videoIcon.setAttribute('fill', '#00a884');
+    // Tint the video icon green to signal it's active
+    const videoSvg = elementWithIconTitle(videoBtn, ICON.videoCall, 'svg');
+    if (videoSvg) {
+      videoSvg.querySelectorAll('path').forEach(p => p.setAttribute('fill', '#00a884'));
       debug('Changed icon color to green');
     }
 
     debug('Button hijacked successfully!');
     return true;
+  }
+
+  // Override WhatsApp's "Send call link" item in the overflow (three-dot) menu.
+  // The menu is created fresh each time it opens, so we re-scan on DOM changes.
+  function hijackSendCallLink() {
+    const items = document.querySelectorAll('[role="menuitem"]');
+    let found = false;
+    items.forEach(item => {
+      if (item.getAttribute('data-wpcall-hijacked') === 'true') { found = true; return; }
+      if (elementWithIconTitle(item, ICON.sendLink, 'svg')) {
+        item.setAttribute('data-wpcall-hijacked', 'true');
+        item.setAttribute('data-wpcall-menuitem', 'true');
+        debug('Hijacked "Send call link" menu item');
+        found = true;
+      }
+    });
+    return found;
+  }
+
+  // Close any open WhatsApp overflow menu (used after overriding a menu item).
+  function closeOpenMenu() {
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true
+    }));
   }
 
   // Create right-side indicator (replaces WhatsApp's download prompt)
@@ -390,8 +454,7 @@
     }
 
     // Don't inject if a chat is open
-    if (document.querySelector('[data-wpcall-hijacked="true"]') ||
-      document.querySelector('button[aria-label="Get the app for calling"]')) {
+    if (document.querySelector('[data-wpcall-hijacked="true"]') || isChatOpen()) {
       return false;
     }
 
@@ -434,8 +497,14 @@
 
   // Check if a chat is currently open
   function isChatOpen() {
-    // Check for WhatsApp's video call button which only appears when a chat is open
-    return !!document.querySelector('button[aria-label="Get the app for calling"], [data-wpcall-hijacked="true"]');
+    // The compose box only exists when a conversation is open; the video-call
+    // button is a secondary signal. (The old "Get the app for calling" label no
+    // longer exists in builds that support in-browser calling.)
+    return !!(
+      document.querySelector(SELECTORS.messageInput) ||
+      findVideoCallButton() ||
+      document.querySelector('[data-wpcall-hijacked="true"]')
+    );
   }
 
   // Main injection logic
@@ -449,6 +518,9 @@
 
       // Inject call button
       isInjected = injectCallButton();
+
+      // Override the "Send call link" overflow-menu item if the menu is open
+      hijackSendCallLink();
     } else {
       // Remove call button (if orphaned)
       const orphanedBtn = document.querySelector('[data-wpcall="true"]');
