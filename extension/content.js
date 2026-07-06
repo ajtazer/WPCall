@@ -306,36 +306,42 @@
     if (globalClickHandlerSet) return;
     globalClickHandlerSet = true;
 
-    // Use capturing phase at document level to intercept clicks before WhatsApp handles them
-    let lastClickTime = 0;
-    document.addEventListener('click', (e) => {
-      // Check if click is on our hijacked button or its children
-      const hijackedBtn = e.target.closest('[data-wpcall-hijacked="true"]');
-      if (hijackedBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+    let lastFireTime = 0;
 
-        // Debounce - prevent double clicks within 1 second
-        const now = Date.now();
-        if (now - lastClickTime < 1000) {
-          debug('Click debounced');
-          return false;
-        }
-        lastClickTime = now;
+    // WhatsApp triggers its call action on pointerdown/mousedown (React), not on
+    // click — so intercepting only 'click' lets its handler run first (showing the
+    // Mac-app prompt / posting its own link). We must swallow the whole interaction
+    // in the capture phase, on every event it could use, and drive our flow once.
+    function intercept(e) {
+      const hijacked = e.target.closest && e.target.closest('[data-wpcall-hijacked="true"]');
+      if (!hijacked) return;
 
-        debug('WPCall button clicked via global handler!');
-        // If this was the overflow-menu "Send call link" item, close the menu
-        // so our composed message is visible.
-        if (hijackedBtn.getAttribute('data-wpcall-menuitem') === 'true') {
-          closeOpenMenu();
-        }
-        handleCallClick();
-        return false;
+      // Block WhatsApp's own handling of this interaction entirely.
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      // pointerdown + mousedown + mouseup + click all fire for one tap; act once.
+      const now = Date.now();
+      if (now - lastFireTime < 800) return false;
+
+      // Only actually launch on the "down" of the press (earliest signal).
+      if (e.type !== 'pointerdown' && e.type !== 'mousedown') return false;
+      lastFireTime = now;
+
+      debug('WPCall interaction intercepted on ' + e.type, hijacked);
+      if (hijacked.getAttribute('data-wpcall-menuitem') === 'true') {
+        closeOpenMenu();
       }
-    }, true); // true = capturing phase
+      handleCallClick();
+      return false;
+    }
 
-    debug('Global click handler set up');
+    ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(type => {
+      document.addEventListener(type, intercept, true); // capture phase
+    });
+
+    debug('Global interaction handlers set up (pointerdown/mousedown/click)');
   }
 
   // Hijack WhatsApp's existing video call button (header)
@@ -402,6 +408,32 @@
     document.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true
     }));
+  }
+
+  // Fallback: if WhatsApp's "Make calls with the Mac app / Download WhatsApp for
+  // Mac to start making calls" popover appears (i.e. a click slipped past our
+  // interception), dismiss it and run WPCall instead. Matches by copy; bounded so
+  // it can't fire on unrelated UI, and rate-limited so it can't loop.
+  let macPromptHandledAt = 0;
+  const MAC_PROMPT_RE = /to start making calls|make calls with the .{0,12}app/i;
+  function overrideMacAppPrompt() {
+    const now = Date.now();
+    if (now - macPromptHandledAt < 1500) return false;
+
+    const candidates = document.querySelectorAll(
+      '[role="dialog"], [data-animate-modal-popup], span[dir="auto"]'
+    );
+    for (const el of candidates) {
+      const txt = el.textContent || '';
+      if (txt.length <= 200 && MAC_PROMPT_RE.test(txt)) {
+        macPromptHandledAt = now;
+        debug('Mac-app call prompt detected — overriding with WPCall');
+        closeOpenMenu();     // dismiss WhatsApp's popover
+        handleCallClick();   // run WPCall instead
+        return true;
+      }
+    }
+    return false;
   }
 
   // Create right-side indicator (replaces WhatsApp's download prompt)
@@ -521,6 +553,9 @@
 
       // Override the "Send call link" overflow-menu item if the menu is open
       hijackSendCallLink();
+
+      // Safety net: convert WhatsApp's "download the Mac app" call prompt into WPCall
+      overrideMacAppPrompt();
     } else {
       // Remove call button (if orphaned)
       const orphanedBtn = document.querySelector('[data-wpcall="true"]');
