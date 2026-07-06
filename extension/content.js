@@ -364,43 +364,13 @@
 
     debug('Found WhatsApp video call button, hijacking...', videoBtn);
 
-    // Mark as hijacked (this is what our global handler looks for)
+    // Mark as hijacked (invisible marker our interceptor looks for). Leave the
+    // icon, chevron, and aria-label untouched so it looks exactly like WhatsApp's
+    // native button — the interception happens behind an unchanged UI.
     videoBtn.setAttribute('data-wpcall-hijacked', 'true');
-    videoBtn.setAttribute('aria-label', 'Start video call with WPCall');
 
-    // Hide the dropdown chevron (svg with the arrow-drop-down title)
-    const arrowSvg = elementWithIconTitle(videoBtn, ICON.dropArrow, 'svg');
-    if (arrowSvg) {
-      arrowSvg.style.display = 'none';
-      debug('Hidden dropdown arrow');
-    }
-
-    // Tint the video icon green to signal it's active
-    const videoSvg = elementWithIconTitle(videoBtn, ICON.videoCall, 'svg');
-    if (videoSvg) {
-      videoSvg.querySelectorAll('path').forEach(p => p.setAttribute('fill', '#00a884'));
-      debug('Changed icon color to green');
-    }
-
-    debug('Button hijacked successfully!');
+    debug('Button hijacked (native appearance preserved)');
     return true;
-  }
-
-  // Override WhatsApp's "Send call link" item in the overflow (three-dot) menu.
-  // The menu is created fresh each time it opens, so we re-scan on DOM changes.
-  function hijackSendCallLink() {
-    const items = document.querySelectorAll('[role="menuitem"]');
-    let found = false;
-    items.forEach(item => {
-      if (item.getAttribute('data-wpcall-hijacked') === 'true') { found = true; return; }
-      if (elementWithIconTitle(item, ICON.sendLink, 'svg')) {
-        item.setAttribute('data-wpcall-hijacked', 'true');
-        item.setAttribute('data-wpcall-menuitem', 'true');
-        debug('Hijacked "Send call link" menu item');
-        found = true;
-      }
-    });
-    return found;
   }
 
   // Close any open WhatsApp overflow menu (used after overriding a menu item).
@@ -434,6 +404,68 @@
       }
     }
     return false;
+  }
+
+  // Inject the WPCall link into WhatsApp's native "Send call link" popup, so the
+  // link the user copies/shares points at WPCall instead of call.whatsapp.com.
+  // We detect the popup by the presence of a call.whatsapp.com URL, handle each
+  // popup instance once, and also log its DOM so the button wiring can be made
+  // exact. (WhatsApp's React tree may re-render text; the copy/share interception
+  // in the capture phase is the reliable part.)
+  let handledCallPopup = null;
+  function injectIntoCallLinkPopup() {
+    // Reset once the handled popup is closed.
+    if (handledCallPopup && !document.body.contains(handledCallPopup)) {
+      handledCallPopup = null;
+    }
+    const dialogs = document.querySelectorAll('[role="dialog"], [data-animate-modal-popup]');
+    for (const dlg of dialogs) {
+      if (dlg === handledCallPopup) return;
+      if (!/call\.whatsapp\.com/i.test(dlg.textContent || '')) continue;
+      handledCallPopup = dlg;
+      debug('Call-link popup detected — logging DOM for precise wiring:');
+      console.log('[WPCall Popup DOM]', dlg.outerHTML);
+      injectWpLinkIntoPopup(dlg);
+      return;
+    }
+  }
+
+  async function injectWpLinkIntoPopup(dlg) {
+    let wpLink;
+    try {
+      wpLink = await createCallLink();
+    } catch (e) {
+      debug('WPCall link generation failed', e);
+      return;
+    }
+
+    // 1) Swap the visible whatsapp.com link text for the WPCall link.
+    const walker = document.createTreeWalker(dlg, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (/call\.whatsapp\.com/i.test(node.textContent)) {
+        node.textContent = node.textContent
+          .replace(/https?:\/\/call\.whatsapp\.com\/\S+/gi, wpLink)
+          .replace(/call\.whatsapp\.com\/\S+/gi, wpLink.replace(/^https?:\/\//, ''));
+      }
+    }
+
+    // 2) Redirect copy / share buttons to the WPCall link (capture phase wins
+    //    over WhatsApp's own handler).
+    dlg.querySelectorAll('button, [role="button"]').forEach(btn => {
+      const label = (btn.getAttribute('aria-label') || btn.textContent || '').toLowerCase();
+      if (/copy/.test(label)) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          copyToClipboard(wpLink);
+          showToast('WPCall link copied');
+        }, true);
+      }
+    });
+
+    showToast('WPCall link ready in popup');
   }
 
   // Create right-side indicator (replaces WhatsApp's download prompt)
@@ -551,8 +583,10 @@
       // Inject call button
       isInjected = injectCallButton();
 
-      // Override the "Send call link" overflow-menu item if the menu is open
-      hijackSendCallLink();
+      // Note: we intentionally do NOT hijack the "Send call link" menu item —
+      // it should open WhatsApp's native call-link popup, into which we inject the
+      // WPCall link (see injectIntoCallLinkPopup).
+      injectIntoCallLinkPopup();
 
       // Safety net: convert WhatsApp's "download the Mac app" call prompt into WPCall
       overrideMacAppPrompt();

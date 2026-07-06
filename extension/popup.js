@@ -1,6 +1,17 @@
 // Popup settings logic
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Show OS-appropriate keyboard shortcut (⌘ on macOS, Ctrl elsewhere).
+    (function renderShortcut() {
+        const display = document.getElementById('shortcutDisplay');
+        if (!display) return;
+        const platform = (navigator.userAgentData && navigator.userAgentData.platform) ||
+            navigator.platform || '';
+        const isMac = /mac/i.test(platform);
+        const keys = isMac ? ['⌘', 'Shift', 'V'] : ['Ctrl', 'Shift', 'V'];
+        display.innerHTML = keys.map(k => `<kbd>${k}</kbd>`).join(' + ');
+    })();
+
     const elements = {
         autoCopy: document.getElementById('autoCopy'),
         autoSend: document.getElementById('autoSend'),
