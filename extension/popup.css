@@ -184,3 +184,9 @@ kbd {
     font-size: 12px;
     color: #00a884;
 }
+
+.footer-credit {
+    font-size: 11px;
+    color: #8696a0;
+    margin-top: 6px;
+}
