@@ -46,7 +46,8 @@
         waiting: document.getElementById('waiting-screen'),
         call: document.getElementById('call-screen'),
         ended: document.getElementById('ended-screen'),
-        error: document.getElementById('error-screen')
+        error: document.getElementById('error-screen'),
+        landing: document.getElementById('landing-screen')
     };
 
     const elements = {
@@ -422,7 +423,8 @@
         const params = getUrlParams();
 
         if (!params.room || !params.token) {
-            showError('Invalid call link');
+            // No call link in the URL — this is the landing/about page, not an error.
+            showScreen('landing');
             return;
         }
 
