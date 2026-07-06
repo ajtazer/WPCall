@@ -128,8 +128,82 @@
                 <button id="btn-retry" class="close-btn">Retry</button>
             </div>
         </div>
+
+        <!-- Landing / about (shown when the address has no call link) -->
+        <div id="landing-screen" class="screen">
+            <div class="sparkles" aria-hidden="true">
+                <span>✨</span><span>💚</span><span>✧</span><span>⭐</span><span>✨</span><span>🌸</span>
+            </div>
+            <main class="landing">
+                <header class="landing-top">
+                    <span class="logo">WPCall</span>
+                    <a class="ghost-link" href="https://github.com/ajtazer/WPCall" target="_blank" rel="noopener">GitHub ↗</a>
+                </header>
+
+                <section class="hero">
+                    <!-- Mascot slot: drop waifu.png into /call-page and it appears here -->
+                    <div class="mascot-wrap">
+                        <img class="waifu" src="https://www.nicepng.com/png/full/854-8549797_view-fullsize-nakano-nino-image-go-toubun-no.png" alt="WPCall mascot"
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="waifu-ph" style="display:none" role="img" aria-label="Mascot placeholder">
+                            <span class="waifu-face">(っ◕‿◕)っ</span>
+                            <small>your waifu goes here</small>
+                        </div>
+                        <div class="speech">just a tab, senpai~ <b>(๑&gt;◡&lt;๑)</b></div>
+                    </div>
+
+                    <p class="eyebrow">no desktop app ✦ no chonk ✦ browser-native</p>
+                    <h1 class="headline">big calls,<br><span class="smol">smol</span> ram.</h1>
+                    <p class="lede">your laptop's got 4 gigs and a dream — respect. WPCall calls straight from WhatsApp Web, so a <b>600&nbsp;MB</b> desktop app doesn't come stomping through your RAM like it pays rent. featherweight. potato-approved. <span class="kao">(｡•̀ᴗ-)✧</span></p>
+                </section>
+
+                <!-- Signature: the goofy footprint meter -->
+                <section class="meter" aria-label="Memory footprint comparison">
+                    <div class="meter-row">
+                        <div class="meter-label">
+                            <span class="meter-name">WhatsApp Desktop <span class="tag chonk">chonk</span></span>
+                            <span class="meter-val heavy">≈ 600 MB (˘•ω•˘)</span>
+                        </div>
+                        <div class="bar"><span class="fill heavy" style="--w: 100%"></span></div>
+                    </div>
+                    <div class="meter-row">
+                        <div class="meter-label">
+                            <span class="meter-name">WPCall <span class="tag smol-tag">smol</span></span>
+                            <span class="meter-val light">just this tab (๑˃ᴗ˂)ﻭ</span>
+                        </div>
+                        <div class="bar"><span class="fill light" style="--w: 6%"></span></div>
+                    </div>
+                    <p class="meter-note">same call. a fraction of the thicc. ✨</p>
+                </section>
+
+                <section class="cta-block">
+                    <p class="no-link">no call link in this address, senpai~ this page <em>is</em> the call room. get a link from a friend to hop in <b>(◕‿◕✿)</b></p>
+                    <div class="cta-row">
+                        <a class="btn primary" href="https://github.com/ajtazer/WPCall/releases/latest" target="_blank" rel="noopener">get the extension ✨</a>
+                        <a class="btn ghost" href="https://github.com/ajtazer/WPCall#readme" target="_blank" rel="noopener">how it works</a>
+                    </div>
+                </section>
+
+                <footer class="landing-foot">
+                    <span>made with 💚 for potato laptops</span>
+                    <span>P2P · your media never touches a server</span>
+                </footer>
+            </main>
+        </div>
     </div>
 
+    <script>
+        // Show the landing page immediately (no spinner flash) when there's no call link.
+        (function () {
+            var p = new URLSearchParams(location.search);
+            if (!p.get('room') || !p.get('token')) {
+                var s = document.getElementById('status-screen');
+                if (s) s.classList.remove('active');
+                var l = document.getElementById('landing-screen');
+                if (l) l.classList.add('active');
+            }
+        })();
+    </script>
     <script src="call.js"></script>
 </body>
 

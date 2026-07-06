@@ -11,7 +11,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,10 +43,7 @@ jobs:
 
       - name: Sign Firefox add-on (AMO)
         id: sign
-        if: ${{ secrets.AMO_JWT_ISSUER != '' }}
-        env:
-          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        if: ${{ env.AMO_JWT_ISSUER != '' }}
         run: |
           npm install -g web-ext@latest
           cd build-firefox
