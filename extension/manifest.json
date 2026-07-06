@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WPCall — Calls for WhatsApp Web",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Browser-native video & voice calls for WhatsApp Web — no desktop app needed.",
   "permissions": [
     "storage",

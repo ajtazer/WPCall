@@ -428,16 +428,39 @@
     injectWpLinkIntoPopup(popup, input);
   }
 
-  // Set an <input>'s value in a way React notices (native setter + input event).
-  function setReactInputValue(input, value) {
+  // Set a read-only <input>'s displayed value WITHOUT firing input/change events.
+  // Dispatching those makes React's onChange revert the field to its state value,
+  // so for a display-only field we set the DOM value silently (via the native
+  // setter + the value attribute) and let it stick.
+  function setInputValueSilently(input, value) {
     try {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
       setter.call(input, value);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (e) {
       input.value = value;
     }
+    input.setAttribute('value', value);
+  }
+
+  // Override a WhatsApp button: swallow the whole interaction in capture phase
+  // (pointerdown/mousedown/click) so WhatsApp's own handler never runs, and fire
+  // our action once on the "down" — WhatsApp triggers on pointerdown, so a click
+  // listener is too late.
+  function overrideButton(btn, action) {
+    if (!btn || btn.getAttribute('data-wpcall-bound') === 'true') return;
+    btn.setAttribute('data-wpcall-bound', 'true');
+    let last = 0;
+    const handler = (e) => {
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+      if (e.type !== 'pointerdown' && e.type !== 'mousedown') return false;
+      const now = Date.now();
+      if (now - last < 800) return false;
+      last = now;
+      action();
+      return false;
+    };
+    ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'click'].forEach(t =>
+      btn.addEventListener(t, handler, true));
   }
 
   async function injectWpLinkIntoPopup(popup, input) {
@@ -449,43 +472,37 @@
       return;
     }
 
-    // 1) Show the WPCall link in the popup's link field.
-    setReactInputValue(input, wpLink);
+    // 1) Show the WPCall link in the popup's link field, re-asserting a few times
+    //    in case React renders the popup after our first write.
+    setInputValueSilently(input, wpLink);
+    [150, 500, 1200].forEach(ms => setTimeout(() => {
+      if (document.body.contains(input)) setInputValueSilently(input, wpLink);
+    }, ms));
 
-    // 2) Copy button -> copy the WPCall link (capture phase beats WhatsApp's handler).
-    const copyBtn = elementWithIconTitle(popup, 'ic-content-copy', 'button');
-    if (copyBtn && !copyBtn.hasAttribute('data-wpcall-bound')) {
-      copyBtn.setAttribute('data-wpcall-bound', 'true');
-      copyBtn.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        setReactInputValue(input, wpLink); // re-assert in case React re-rendered
-        copyToClipboard(wpLink);
-        showToast('WPCall link copied');
-      }, true);
-    }
+    // 2) Copy button -> copy the WPCall link.
+    overrideButton(elementWithIconTitle(popup, 'ic-content-copy', 'button'), () => {
+      setInputValueSilently(input, wpLink);
+      copyToClipboard(wpLink);
+      showToast('WPCall link copied');
+    });
 
     // 3) "Send link to chat" -> send the WPCall message instead of WhatsApp's link.
-    const sendBtn = elementWithIconTitle(popup, 'ic-send', 'button');
-    if (sendBtn && !sendBtn.hasAttribute('data-wpcall-bound')) {
-      sendBtn.setAttribute('data-wpcall-bound', 'true');
-      sendBtn.addEventListener('click', async (e) => {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        const message = generateCallMessage(getChatName(), wpLink);
-        // Close the popup, then drop our message into the chat.
-        const closeBtn = elementWithIconTitle(popup, 'ic-close', 'button');
-        if (closeBtn) closeBtn.click();
-        await new Promise(r => setTimeout(r, 250));
-        const settings = await getSettings();
-        if (settings.autoSend) {
-          await autoSendMessage(message);
-          showToast('WPCall link sent');
-        } else {
-          await copyToClipboard(message);
-          await pasteToChat(message);
-          showToast('Message ready - press send!');
-        }
-      }, true);
-    }
+    overrideButton(elementWithIconTitle(popup, 'ic-send', 'button'), async () => {
+      const message = generateCallMessage(getChatName(), wpLink);
+      closeOpenMenu(); // dismiss the popup (Escape)
+      const closeBtn = elementWithIconTitle(popup, 'ic-close', 'button');
+      if (closeBtn) closeBtn.click();
+      await new Promise(r => setTimeout(r, 250));
+      const settings = await getSettings();
+      if (settings.autoSend) {
+        await autoSendMessage(message);
+        showToast('WPCall link sent');
+      } else {
+        await copyToClipboard(message);
+        await pasteToChat(message);
+        showToast('Message ready - press send!');
+      }
+    });
 
     showToast('WPCall link ready');
   }
