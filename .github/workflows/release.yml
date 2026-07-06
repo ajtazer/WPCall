@@ -20,11 +20,44 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       
-      - name: Create extension zip
+      - name: Build Chrome zip
         run: |
           cd extension
-          zip -r ../WPCall-${{ steps.version.outputs.VERSION }}.zip .
+          # Chrome package: everything except the Firefox-specific manifest
+          zip -r ../WPCall-${{ steps.version.outputs.VERSION }}.zip . -x "manifest.firefox.json"
           cd ..
+
+      - name: Build Firefox xpi
+        run: |
+          # Firefox package: swap in the Firefox manifest as manifest.json
+          rm -rf build-firefox
+          mkdir -p build-firefox
+          cp -r extension/. build-firefox/
+          mv build-firefox/manifest.firefox.json build-firefox/manifest.json
+          cd build-firefox
+          zip -r ../WPCall-firefox-${{ steps.version.outputs.VERSION }}.xpi .
+          cd ..
+
+      - name: Sign Firefox add-on (AMO)
+        id: sign
+        if: ${{ secrets.AMO_JWT_ISSUER != '' }}
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npm install -g web-ext@latest
+          cd build-firefox
+          # Produces a signed .xpi in web-ext-artifacts/ if AMO credentials are set.
+          web-ext sign \
+            --api-key="$AMO_JWT_ISSUER" \
+            --api-secret="$AMO_JWT_SECRET" \
+            --channel=unlisted || echo "Signing failed or pending AMO review; unsigned .xpi still attached."
+          cd ..
+          SIGNED=$(ls build-firefox/web-ext-artifacts/*.xpi 2>/dev/null | head -1 || true)
+          if [ -n "$SIGNED" ]; then
+            cp "$SIGNED" "WPCall-firefox-${{ steps.version.outputs.VERSION }}-signed.xpi"
+            echo "signed=true" >> $GITHUB_OUTPUT
+          fi
       
       - name: Generate changelog
         id: changelog
@@ -48,21 +81,28 @@ jobs:
           name: WPCall ${{ steps.version.outputs.VERSION }}
           body: |
             ## 📹 WPCall ${{ steps.version.outputs.VERSION }}
-            
-            ### Installation
+
+            ### Chrome / Brave / Edge
             1. Download `WPCall-${{ steps.version.outputs.VERSION }}.zip`
             2. Extract the zip file
             3. Go to `chrome://extensions/`
-            4. Enable "Developer mode"
-            5. Click "Load unpacked" and select the extracted folder
-            
+            4. Enable **Developer mode**
+            5. Click **Load unpacked** and select the extracted folder
+
+            ### Firefox
+            - **Signed** (if available): download `WPCall-firefox-${{ steps.version.outputs.VERSION }}-signed.xpi` and open it in Firefox to install permanently.
+            - **Unsigned** (temporary): download `WPCall-firefox-${{ steps.version.outputs.VERSION }}.xpi`, go to `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → select the `.xpi`. (Removed on restart until signed via AMO.)
+
             ### Changes
             ${{ steps.changelog.outputs.CHANGES }}
-            
+
             ---
             Full documentation: [README](https://github.com/ajtazer/WPCall#readme)
           files: |
             WPCall-${{ steps.version.outputs.VERSION }}.zip
+            WPCall-firefox-${{ steps.version.outputs.VERSION }}.xpi
+            WPCall-firefox-${{ steps.version.outputs.VERSION }}-signed.xpi
+          fail_on_unmatched_files: false
           draft: false
           prerelease: false
         env:

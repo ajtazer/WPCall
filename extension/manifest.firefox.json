@@ -3,6 +3,12 @@
   "name": "WPCall — Calls for WhatsApp Web",
   "version": "2.2.0",
   "description": "Browser-native video & voice calls for WhatsApp Web — no desktop app needed.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "wpcall@bihari.xyz",
+      "strict_min_version": "115.0"
+    }
+  },
   "permissions": [
     "storage",
     "clipboardWrite",
@@ -33,7 +39,7 @@
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "commands": {
     "start-call": {
