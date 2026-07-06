@@ -117,29 +117,23 @@
     return message;
   }
 
-  // Create call link
-  async function createCallLink() {
+  // Create a call link SYNCHRONOUSLY. The link string only needs a locally
+  // generated room id + token, so we return it immediately and register the room
+  // with the signaling server in the background (fire-and-forget) — no await, so
+  // there's no delay before the link can be shown/injected.
+  function createCallLink() {
     const roomId = generateRoomId();
     const token = generateToken();
+    const expiry = (cachedSettings && cachedSettings.callExpiry) || 15; // minutes
 
-    // Get settings for expiry
-    const settings = await getSettings();
-    const expiry = settings.callExpiry || 15; // minutes
-
-    try {
-      // Register room with signaling server
-      const response = await fetch(`${SIGNALING_URL}/room`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, token, expiry })
-      });
-
-      if (!response.ok) {
-        console.warn('Failed to register room, using local-only link');
-      }
-    } catch (e) {
+    // Background registration — the room is ready long before anyone joins.
+    fetch(`${SIGNALING_URL}/room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, token, expiry })
+    }).catch(() => {
       console.warn('Signaling server unavailable, using local-only link');
-    }
+    });
 
     return `${CALL_PAGE_URL}?room=${roomId}&token=${token}`;
   }
@@ -242,27 +236,30 @@
     return false;
   }
 
+  // Default settings, shared by getSettings() and the synchronous cache.
+  const DEFAULT_SETTINGS = {
+    autoCopy: true,
+    autoSend: false,
+    audioOnly: false,
+    screenShare: true,
+    callExpiry: 15,
+    openCallRoom: false
+  };
+
+  // Synchronous snapshot of settings, kept fresh so createCallLink() (which must
+  // be synchronous to avoid link-injection lag) can read callExpiry without await.
+  let cachedSettings = { ...DEFAULT_SETTINGS };
+
   // Get extension settings
   async function getSettings() {
     return new Promise(resolve => {
       if (chrome?.storage?.sync) {
-        chrome.storage.sync.get({
-          autoCopy: true,
-          autoSend: false,
-          audioOnly: false,
-          screenShare: true,
-          callExpiry: 15,
-          openCallRoom: false  // New setting - off by default
-        }, resolve);
-      } else {
-        resolve({
-          autoCopy: true,
-          autoSend: false,
-          audioOnly: false,
-          screenShare: true,
-          callExpiry: 15,
-          openCallRoom: false
+        chrome.storage.sync.get({ ...DEFAULT_SETTINGS }, (s) => {
+          cachedSettings = s;
+          resolve(s);
         });
+      } else {
+        resolve({ ...DEFAULT_SETTINGS });
       }
     });
   }
@@ -463,14 +460,10 @@
       btn.addEventListener(t, handler, true));
   }
 
-  async function injectWpLinkIntoPopup(popup, input) {
-    let wpLink;
-    try {
-      wpLink = await createCallLink();
-    } catch (e) {
-      debug('WPCall link generation failed', e);
-      return;
-    }
+  function injectWpLinkIntoPopup(popup, input) {
+    // Synchronous — the link is available immediately, so it replaces WhatsApp's
+    // link with no perceptible delay.
+    const wpLink = createCallLink();
 
     // 1) Show the WPCall link in the popup's link field, re-asserting a few times
     //    in case React renders the popup after our first write.
@@ -660,6 +653,16 @@
 
   // Initialize
   function init() {
+    // Prime the synchronous settings cache and keep it fresh.
+    getSettings();
+    if (chrome?.storage?.onChanged) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'sync') {
+          for (const key in changes) cachedSettings[key] = changes[key].newValue;
+        }
+      });
+    }
+
     // Initial injection attempt
     updateInjection();
 
