@@ -406,31 +406,41 @@
     return false;
   }
 
-  // Inject the WPCall link into WhatsApp's native "Send call link" popup, so the
-  // link the user copies/shares points at WPCall instead of call.whatsapp.com.
-  // We detect the popup by the presence of a call.whatsapp.com URL, handle each
-  // popup instance once, and also log its DOM so the button wiring can be made
-  // exact. (WhatsApp's React tree may re-render text; the copy/share interception
-  // in the capture phase is the reliable part.)
-  let handledCallPopup = null;
+  // Inject the WPCall link into WhatsApp's native "New call link" popup so the
+  // link the user copies / sends points at WPCall instead of call.whatsapp.com.
+  //
+  // The popup (confirmed 2026-07) contains:
+  //   - input[type=text][readonly] value="https://call.whatsapp.com/video/<id>"
+  //   - Copy button   -> svg <title>ic-content-copy</title>
+  //   - "Send link to chat" button -> svg <title>ic-send</title>
+  //   - Close button  -> svg <title>ic-close</title>
+  let handledPopupInput = null;
   function injectIntoCallLinkPopup() {
-    // Reset once the handled popup is closed.
-    if (handledCallPopup && !document.body.contains(handledCallPopup)) {
-      handledCallPopup = null;
-    }
-    const dialogs = document.querySelectorAll('[role="dialog"], [data-animate-modal-popup]');
-    for (const dlg of dialogs) {
-      if (dlg === handledCallPopup) return;
-      if (!/call\.whatsapp\.com/i.test(dlg.textContent || '')) continue;
-      handledCallPopup = dlg;
-      debug('Call-link popup detected — logging DOM for precise wiring:');
-      console.log('[WPCall Popup DOM]', dlg.outerHTML);
-      injectWpLinkIntoPopup(dlg);
-      return;
+    // The link lives in an <input value=...>, not in textContent — match the attr.
+    const input = document.querySelector('input[type="text"][value*="call.whatsapp.com"]');
+    if (!input) { handledPopupInput = null; return; }
+    if (input === handledPopupInput) return; // already handled this popup instance
+    handledPopupInput = input;
+
+    const popup = input.closest('[data-animate-modal-body], [data-testid="popup-contents"]')
+      || input.closest('[role="dialog"]') || document.body;
+    debug('Native call-link popup detected — injecting WPCall link');
+    injectWpLinkIntoPopup(popup, input);
+  }
+
+  // Set an <input>'s value in a way React notices (native setter + input event).
+  function setReactInputValue(input, value) {
+    try {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {
+      input.value = value;
     }
   }
 
-  async function injectWpLinkIntoPopup(dlg) {
+  async function injectWpLinkIntoPopup(popup, input) {
     let wpLink;
     try {
       wpLink = await createCallLink();
@@ -439,33 +449,45 @@
       return;
     }
 
-    // 1) Swap the visible whatsapp.com link text for the WPCall link.
-    const walker = document.createTreeWalker(dlg, NodeFilter.SHOW_TEXT);
-    let node;
-    while ((node = walker.nextNode())) {
-      if (/call\.whatsapp\.com/i.test(node.textContent)) {
-        node.textContent = node.textContent
-          .replace(/https?:\/\/call\.whatsapp\.com\/\S+/gi, wpLink)
-          .replace(/call\.whatsapp\.com\/\S+/gi, wpLink.replace(/^https?:\/\//, ''));
-      }
+    // 1) Show the WPCall link in the popup's link field.
+    setReactInputValue(input, wpLink);
+
+    // 2) Copy button -> copy the WPCall link (capture phase beats WhatsApp's handler).
+    const copyBtn = elementWithIconTitle(popup, 'ic-content-copy', 'button');
+    if (copyBtn && !copyBtn.hasAttribute('data-wpcall-bound')) {
+      copyBtn.setAttribute('data-wpcall-bound', 'true');
+      copyBtn.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        setReactInputValue(input, wpLink); // re-assert in case React re-rendered
+        copyToClipboard(wpLink);
+        showToast('WPCall link copied');
+      }, true);
     }
 
-    // 2) Redirect copy / share buttons to the WPCall link (capture phase wins
-    //    over WhatsApp's own handler).
-    dlg.querySelectorAll('button, [role="button"]').forEach(btn => {
-      const label = (btn.getAttribute('aria-label') || btn.textContent || '').toLowerCase();
-      if (/copy/.test(label)) {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          copyToClipboard(wpLink);
-          showToast('WPCall link copied');
-        }, true);
-      }
-    });
+    // 3) "Send link to chat" -> send the WPCall message instead of WhatsApp's link.
+    const sendBtn = elementWithIconTitle(popup, 'ic-send', 'button');
+    if (sendBtn && !sendBtn.hasAttribute('data-wpcall-bound')) {
+      sendBtn.setAttribute('data-wpcall-bound', 'true');
+      sendBtn.addEventListener('click', async (e) => {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        const message = generateCallMessage(getChatName(), wpLink);
+        // Close the popup, then drop our message into the chat.
+        const closeBtn = elementWithIconTitle(popup, 'ic-close', 'button');
+        if (closeBtn) closeBtn.click();
+        await new Promise(r => setTimeout(r, 250));
+        const settings = await getSettings();
+        if (settings.autoSend) {
+          await autoSendMessage(message);
+          showToast('WPCall link sent');
+        } else {
+          await copyToClipboard(message);
+          await pasteToChat(message);
+          showToast('Message ready - press send!');
+        }
+      }, true);
+    }
 
-    showToast('WPCall link ready in popup');
+    showToast('WPCall link ready');
   }
 
   // Create right-side indicator (replaces WhatsApp's download prompt)
