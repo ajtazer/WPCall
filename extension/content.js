@@ -267,18 +267,21 @@
   // Handle call button click
   async function handleCallClick() {
     const chatName = getChatName();
-    const callLink = await createCallLink();
+    const callLink = createCallLink();
     const message = generateCallMessage(chatName, callLink);
 
     const settings = await getSettings();
+
+    // Open call room immediately from the direct click/shortcut interaction to
+    // avoid popup-blocking and delayed navigation races.
+    if (settings.openCallRoom) {
+      window.open(callLink, '_blank');
+    }
 
     if (settings.autoSend) {
       const sent = await autoSendMessage(message);
       if (sent) {
         showToast('Call message sent');
-        if (settings.openCallRoom) {
-          window.open(callLink, '_blank');
-        }
         return;
       }
     }
@@ -290,10 +293,6 @@
       showToast('Message ready - press send!');
     }
 
-    // Only open call page if setting is enabled
-    if (settings.openCallRoom) {
-      window.open(callLink, '_blank');
-    }
   }
 
   // Global click handler (set up once)
